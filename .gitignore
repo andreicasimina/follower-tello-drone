@@ -1,3 +1,7 @@
 .*
 
+datasets
+runs
+
+!*/*.pt
 !.gitignore
