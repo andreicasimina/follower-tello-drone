@@ -1,6 +1,7 @@
+# https://tello.oneoffcoder.com/python-manual-control.html
+
 import tello
 from ui import TelloUI
-
 
 def main():
     drone = tello.Tello('', 8889)  
