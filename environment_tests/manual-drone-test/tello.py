@@ -89,6 +89,8 @@ class Tello(object):
 
         self.response = None
 
+        print(response)
+
         return response
     
     def set_abort_flag(self):
