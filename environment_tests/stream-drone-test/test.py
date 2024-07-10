@@ -1,53 +1,74 @@
-# simple example demonstrating how to control a Tello using your keyboard.
-# For a more fully featured example see manual-control-pygame.py
-# 
-# Use W, A, S, D for moving, E, Q for rotating and R, F for going up and down.
-# When starting the script the Tello will takeoff, pressing ESC makes it land
-#  and the script exit.
+import cv2
+import socket
+import threading
+import time
+import numpy as np
 
-# 简单的演示如何用键盘控制Tello
-# 欲使用全手动控制请查看 manual-control-pygame.py
-#
-# W, A, S, D 移动， E, Q 转向，R、F上升与下降.
-# 开始运行程序时Tello会自动起飞，按ESC键降落
-# 并且程序会退出
+#ドローン制御部
+# データ受け取り用の関数
+def udp_receiver():
+    while True:
+        try:
+            response, _ = sock.recvfrom(1024)
+        except Exception as e:
+            print(e)
+            break
 
-from djitellopy import Tello
-import cv2, math, time
+# Tello側のローカルIPアドレス(デフォルト)、宛先ポート番号(コマンドモード用)
+TELLO_IP = '192.168.10.1'
+TELLO_PORT = 8889
+TELLO_ADDRESS = (TELLO_IP, TELLO_PORT)
 
-tello = Tello()
-tello.connect()
+# Telloからの映像受信用のローカルIPアドレス、宛先ポート番号
+TELLO_CAMERA_ADDRESS = 'udp://@0.0.0.0:11111'
 
-tello.streamon()
-frame_read = tello.get_frame_read()
+# キャプチャ用のオブジェクト
+cap = None
 
-tello.takeoff()
+# データ受信用のオブジェクト備
+response = None
+
+# 通信用のソケットを作成
+# ※アドレスファミリ：AF_INET（IPv4）、ソケットタイプ：SOCK_DGRAM（UDP）
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+# 自ホストで使用するIPアドレスとポート番号を設定
+sock.bind(('', TELLO_PORT))
+
+# 受信用スレッドの作成
+thread = threading.Thread(target=udp_receiver, args=())
+thread.daemon = True
+thread.start()
+
+# コマンドモード
+sock.sendto('command'.encode('utf-8'), TELLO_ADDRESS)
+
+time.sleep(1)
+
+# カメラ映像のストリーミング開始
+sock.sendto('streamon'.encode('utf-8'), TELLO_ADDRESS)
+
+time.sleep(5)
+
+if cap is None:
+    cap = cv2.VideoCapture(TELLO_CAMERA_ADDRESS)
+
+if not cap.isOpened():
+    cap.open(TELLO_CAMERA_ADDRESS)
+
+time.sleep(1)
+
+s = 0
 
 while True:
-    # In reality you want to display frames in a seperate thread. Otherwise
-    #  they will freeze while the drone moves.
-    # 在实际开发里请在另一个线程中显示摄像头画面，否则画面会在无人机移动时静止
-    img = frame_read.frame
-    cv2.imshow("drone", img)
+    ret, frame = cap.read()
 
-    key = cv2.waitKey(1) & 0xff
-    if key == 27: # ESC
+    cv2.imshow('Tello Camera View', frame)
+
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        cap.release()
+        cv2.destroyAllWindows()
+
+        # ビデオストリーミング停止
+        sock.sendto('streamoff'.encode('utf-8'), TELLO_ADDRESS)
         break
-    elif key == ord('w'):
-        tello.move_forward(30)
-    elif key == ord('s'):
-        tello.move_back(30)
-    elif key == ord('a'):
-        tello.move_left(30)
-    elif key == ord('d'):
-        tello.move_right(30)
-    elif key == ord('e'):
-        tello.rotate_clockwise(30)
-    elif key == ord('q'):
-        tello.rotate_counter_clockwise(30)
-    elif key == ord('r'):
-        tello.move_up(30)
-    elif key == ord('f'):
-        tello.move_down(30)
-
-tello.land()
