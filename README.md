@@ -19,20 +19,28 @@ networkingMode=mirrored
 4. Allow inbound connections through the Hyper-V firewall
 https://superuser.com/questions/1717753/how-to-connect-to-windows-subsystem-for-linux-from-another-machine-within-networ
 Run Powershell with administrator privileges and input the following command:
-`Set-NetFirewallHyperVVMSetting -Name "{40E0AC32-46A5-438A-A0B2-2B479E8F2E90}" -DefaultInboundAction Allow`
+```
+Set-NetFirewallHyperVVMSetting -Name "{40E0AC32-46A5-438A-A0B2-2B479E8F2E90}" -DefaultInboundAction Allow
+```
 
-## Ubuntu
+## Ubuntu Side
 
 1. Install Dependencies
-`pip install -r requirements.txt`
+```
+pip install -r requirements.txt
+```
 This will return errors.
 
 2. Install OpenCv
-`pip install opencv-python`
+```
+pip install opencv-python
+```
 
 3. Install PyTorch
 https://pytorch.org/get-started/locally/
 
 4. Install YOLOv8
 https://docs.ultralytics.com/quickstart/
-`pip install ultralytics`
+```
+pip install ultralytics
+```
