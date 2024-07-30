@@ -1,126 +1,127 @@
 from ultralytics import YOLO
-from PIL import Image
 import cv2
 import socket
 import threading
 import time
-import numpy as np
-#import os
 
+# Image recognition part
+model = YOLO('./yolov8n.pt', task='track')  # Initialize YOLO model with tracking
 
-#YOLO初期化
-# YOLO modelの初期化i
-#model = YOLO("yolov8n.pt")
-
-# bus.jpgのパス
-#image_path = "usevideo/bus.jpg"
-
-# 画像をPIL Imageとして読み込む
-#im1 = Image.open(image_path)
-
-# YOLOモデルで予測を実行し、保存する
-#results = model.predict(source=im1, save=True)
-
-# 保存された画像のパスを表示する
-#print("保存された画像:", results)
-
-##mp4ファイルの動画の物体認識  
-model = YOLO("./YOLOv8-HumanDetection/best.pt")
-
-#cuda使うのはたぶんこれ
-#model.to("cuda")
-
-image_path = "usevideo/test.mp4"
-
-
-
-#ドローン制御部
-# データ受け取り用の関数
-def udp_receiver():
+# Function for receiving data
+def udp_receiver(sock):
     while True:
         try:
             response, _ = sock.recvfrom(1024)
+            print("Received data:", response.decode('utf-8'))
+        except socket.timeout:
+            print("Socket timeout, retrying...")
+            continue
         except Exception as e:
-            print(e)
+            print("Error in udp_receiver:", e)
             break
 
-# Tello側のローカルIPアドレス(デフォルト)、宛先ポート番号(コマンドモード用)
-TELLO_IP = '192.168.10.1'
-TELLO_PORT = 8889
-TELLO_ADDRESS = (TELLO_IP, TELLO_PORT)
+# Function to initialize and return a socket
+def initialize_socket(TELLO_PORT):
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.bind(('', TELLO_PORT))
+    sock.settimeout(30.0)
+    return sock
 
-# Telloからの映像受信用のローカルIPアドレス、宛先ポート番号
-TELLO_CAMERA_ADDRESS = 'udp://@0.0.0.0:11111'
-# TELLO_CAMERA_ADDRESS = '192.168.10.1:11111'
-
-# キャプチャ用のオブジェクト
-cap = None
-
-# データ受信用のオブジェクト備
-response = None
-
-# 通信用のソケットを作成
-# ※アドレスファミリ：AF_INET（IPv4）、ソケットタイプ：SOCK_DGRAM（UDP）
-sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
-# 自ホストで使用するIPアドレスとポート番号を設定
-sock.bind(('', TELLO_PORT))
-
-# 受信用スレッドの作成
-thread = threading.Thread(target=udp_receiver, args=())
-thread.daemon = True
-thread.start()
-
-# コマンドモード
-sock.sendto('command'.encode('utf-8'), TELLO_ADDRESS)
-
-time.sleep(1)
-
-# カメラ映像のストリーミング開始
-sock.sendto('streamon'.encode('utf-8'), TELLO_ADDRESS)
-
-time.sleep(5)
-
-if cap is None:
+# Function to handle the main video capture and processing loop
+def video_capture_loop(sock, TELLO_ADDRESS, TELLO_CAMERA_ADDRESS):
     cap = cv2.VideoCapture(TELLO_CAMERA_ADDRESS)
+    if not cap.isOpened():
+        cap.open(TELLO_CAMERA_ADDRESS)
 
-if not cap.isOpened():
-    cap.open(TELLO_CAMERA_ADDRESS)
+    frame_num = 0
 
-time.sleep(1)
+    try:
+        while True:
+            ret, frame = cap.read()
 
-s = 0
+            if not ret or frame is None or frame.size == 0:
+                print("Error reading frame or empty frame received.")
+                continue
 
-while True:
-    ret, frame = cap.read()
+            print(frame_num)
 
-    # 動画フレームが空ならスキップ
-    if frame is None or frame.size == 0:
-        continue
+            if frame_num != 0:
+                frame_num += 1
+                if frame_num > 4:
+                    frame_num = 0
+                continue
 
-    # カメラ映像のサイズを半分にしてウィンドウに表示
-    frame_height, frame_width = frame.shape[:2]
-    frame = cv2.resize(frame, (int(frame_width/2), int(frame_height/2)))
-    
-    cv2.imshow('Tello Camera View', frame)
-    cv2.imwrite('lena_opencv_red.jpg', frame)
-    s = s + 1
+            frame_height, frame_width = frame.shape[:2]
 
-    image_path = "/Users/masataka/Desktop/PBL/AutoDrone/lena_opencv_red.jpg"
+            cv2.imshow('Tello Camera View', frame)
 
-    # WEBカメラからリアルタイム検出
-    results = model(source=image_path, show=True)
-    for i in enumerate(results):
-        print(i)
+            results = model.track(frame)  # Perform tracking
+            if results:
+                for result in results:
+                    classes_names = result.names if hasattr(result, 'names') else []
+                    if result.boxes:
+                        for box in result.boxes:
+                            if hasattr(box, 'conf') and box.conf is not None and box.conf[0] > 0.4:
+                                if hasattr(box, 'xyxy') and box.xyxy is not None:
+                                    [x1, y1, x2, y2] = box.xyxy[0]
+                                    x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
+                                    cls = int(box.cls[0]) if hasattr(box, 'cls') and box.cls is not None else -1
+                                    class_name = classes_names[cls] if cls != -1 and cls < len(classes_names) else 'Unknown'
 
-    # 参照ファイル: https://ai-wonderland.com/entry/yolov8webcamera
+                                    # Get the track ID
+                                    track_id = box.id[0] if hasattr(box, 'id') and box.id is not None else None
 
-    # qキーで終了
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        
-        break
-cap.release()
-cv2.destroyAllWindows()
+                                    # Draw the rectangle and track ID
+                                    cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 0, 0), 2)
+                                    label = f'{class_name} {box.conf[0]:.2f}'
+                                    if track_id is not None:
+                                        label += f' ID:{track_id}'
+                                    cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2)
 
-# ビデオストリーミング停止
-sock.sendto('streamoff'.encode('utf-8'), TELLO_ADDRESS)
+            cv2.imshow('Tello Camera View', frame)
+
+            frame_num += 1
+
+            # Add a small delay to ensure the loop runs smoothly
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                sock.sendto('land'.encode('utf-8'), TELLO_ADDRESS)
+                break
+            else:
+                cv2.waitKey(1)  # Add this line to ensure proper event processing
+    except KeyboardInterrupt:
+        sock.sendto('land'.encode('utf-8'), TELLO_ADDRESS)
+        print("Interrupted by user")
+    except Exception as e:
+        sock.sendto('land'.encode('utf-8'), TELLO_ADDRESS)
+        print(f"An error occurred: {e}")
+    finally:
+        cap.release()
+        cv2.destroyAllWindows()
+        sock.sendto('streamoff'.encode('utf-8'), TELLO_ADDRESS)
+        sock.close()
+        print("Socket closed")
+
+# Main function
+def main():
+    TELLO_IP = '192.168.10.1'
+    TELLO_PORT = 8889
+    TELLO_ADDRESS = (TELLO_IP, TELLO_PORT)
+    TELLO_CAMERA_ADDRESS = 'udp://@0.0.0.0:11111?overrun_nonfatal=1&fifo_size=50000000'
+
+    sock = initialize_socket(TELLO_PORT)
+
+    udp_thread = threading.Thread(target=udp_receiver, args=(sock, ))
+    udp_thread.daemon = True
+    udp_thread.start()
+
+    sock.sendto('command'.encode('utf-8'), TELLO_ADDRESS)
+    time.sleep(1)
+    sock.sendto('streamon'.encode('utf-8'), TELLO_ADDRESS)
+    time.sleep(1)
+    sock.sendto('takeoff'.encode('utf-8'), TELLO_ADDRESS)
+
+    # Run the video capture loop in the main thread
+    video_capture_loop(sock, TELLO_ADDRESS, TELLO_CAMERA_ADDRESS)
+
+if __name__ == "__main__":
+    main()
