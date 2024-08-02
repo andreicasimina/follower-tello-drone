@@ -51,6 +51,9 @@ for result in results:
 # show the image
 cv2.imshow('cv2_image', cv2_image)
 
+# save the image
+cv2.imwrite('./result.jpg', cv2_image)
+
 cv2.waitKey(0)
 
 cv2.destroyAllWindows()
