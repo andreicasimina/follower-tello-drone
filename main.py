@@ -87,6 +87,7 @@ def video_capture_loop(sock, TELLO_ADDRESS, TELLO_CAMERA_ADDRESS):
                 sock.sendto('land'.encode('utf-8'), TELLO_ADDRESS)
                 break
             else:
+                sock.sendto('takeoff'.encode('utf-8'), TELLO_ADDRESS)
                 cv2.waitKey(1)  # Add this line to ensure proper event processing
     except KeyboardInterrupt:
         sock.sendto('land'.encode('utf-8'), TELLO_ADDRESS)
@@ -119,6 +120,7 @@ def main():
     sock.sendto('streamon'.encode('utf-8'), TELLO_ADDRESS)
     time.sleep(1)
     sock.sendto('takeoff'.encode('utf-8'), TELLO_ADDRESS)
+    time.sleep(0.5)
 
     # Run the video capture loop in the main thread
     video_capture_loop(sock, TELLO_ADDRESS, TELLO_CAMERA_ADDRESS)
