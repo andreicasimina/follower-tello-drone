@@ -5,7 +5,8 @@ import threading
 import time
 
 # Image recognition part
-model = YOLO('./yolov8n.pt', task='track')  # Initialize YOLO model with tracking
+model = YOLO('./head-detection.pt', task='track')  # Initialize YOLO model with tracking
+model.to('cuda')
 
 # Function for receiving data
 def udp_receiver(sock):
@@ -52,6 +53,9 @@ def video_capture_loop(sock, TELLO_ADDRESS, TELLO_CAMERA_ADDRESS):
                 continue
 
             frame_height, frame_width = frame.shape[:2]
+            frame_center_x, frame_center_y = int(frame_width / 2), int(frame_height / 2)
+
+            cv2.circle(frame, (frame_center_x, frame_center_y), 10, (255, 0, 0), -1)
 
             cv2.imshow('Tello Camera View', frame)
 
@@ -61,12 +65,24 @@ def video_capture_loop(sock, TELLO_ADDRESS, TELLO_CAMERA_ADDRESS):
                     classes_names = result.names if hasattr(result, 'names') else []
                     if result.boxes:
                         for box in result.boxes:
-                            if hasattr(box, 'conf') and box.conf is not None and box.conf[0] > 0.4:
+                            if hasattr(box, 'conf') and box.conf is not None and box.conf[0] > 0.:
                                 if hasattr(box, 'xyxy') and box.xyxy is not None:
                                     [x1, y1, x2, y2] = box.xyxy[0]
                                     x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
                                     cls = int(box.cls[0]) if hasattr(box, 'cls') and box.cls is not None else -1
                                     class_name = classes_names[cls] if cls != -1 and cls < len(classes_names) else 'Unknown'
+
+                                    # detect_center_xとdetect_center_yの計算
+                                    detect_center_x = int(((x2 - x1) / 2) + x1)
+                                    detect_center_y = int(((y2 - y1) / 2) + y1)
+
+                                    cv2.circle(frame, (detect_center_x, detect_center_y), 10, (255, 255, 255), -1)
+
+                                    # x_center_gapとy_center_gapの計算
+                                    x_center_gap = frame_center_x - detect_center_x
+                                    y_center_gap = frame_center_y - detect_center_y
+
+                                    cv2.arrowedLine(frame, (detect_center_x, detect_center_y), (frame_center_x, frame_center_y), (0, 255, 0), 3)
 
                                     # Get the track ID
                                     track_id = box.id[0] if hasattr(box, 'id') and box.id is not None else None

@@ -11,6 +11,15 @@ image_file2 = './test2.jpg'
 cv2_image1 = cv2.imread(image_file1)
 cv2_image2 = cv2.imread(image_file2)
 
+frame_height1, frame_width1 = cv2_image1.shape[:2]
+frame_center_x1, frame_center_y1 = int(frame_width1 / 2), int(frame_height1 / 2)
+
+frame_height2, frame_width2 = cv2_image2.shape[:2]
+frame_center_x2, frame_center_y2 = int(frame_width2 / 2), int(frame_height2 / 2)
+
+cv2.circle(cv2_image1, (frame_center_x1, frame_center_y1), 5, (255, 0, 0), -1)
+cv2.circle(cv2_image2, (frame_center_x2, frame_center_y2), 5, (255, 0, 0), -1)
+
 results1 = model.track(cv2_image1)
 results2 = model.track(cv2_image2)
 
@@ -28,6 +37,18 @@ for result in results1:
 
             # convert to int
             x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
+
+            # detect_center_xとdetect_center_yの計算
+            detect_center_x = int(((x2 - x1) / 2) + x1)
+            detect_center_y = int(((y2 - y1) / 2) + y1)
+
+            cv2.circle(cv2_image1, (detect_center_x, detect_center_y), 5, (255, 0, 0), -1)
+
+            # x_center_gapとy_center_gapの計算
+            x_center_gap = frame_center_x1 - detect_center_x
+            y_center_gap = frame_center_y1 - detect_center_y
+
+            cv2.arrowedLine(cv2_image1, (detect_center_x, detect_center_y), (frame_center_x1, frame_center_y1), (0, 255, 0), 3)
 
             # get the class
             cls = int(box.cls[0]) if hasattr(box, 'cls') and box.cls is not None else -1
@@ -65,6 +86,18 @@ for result in results2:
 
             # convert to int
             x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
+
+            # detect_center_xとdetect_center_yの計算
+            detect_center_x = int(((x2 - x1) / 2) + x1)
+            detect_center_y = int(((y2 - y1) / 2) + y1)
+
+            cv2.circle(cv2_image2, (detect_center_x, detect_center_y), 5, (255, 0, 0), -1)
+
+            # x_center_gapとy_center_gapの計算
+            x_center_gap = frame_center_x1 - detect_center_x
+            y_center_gap = frame_center_y1 - detect_center_y
+
+            cv2.arrowedLine(cv2_image2, (detect_center_x, detect_center_y), (frame_center_x2, frame_center_y2), (0, 255, 0), 3)
 
             # get the class
             cls = int(box.cls[0]) if hasattr(box, 'cls') and box.cls is not None else -1
