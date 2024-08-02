@@ -28,6 +28,24 @@ def initialize_socket(TELLO_PORT):
     sock.settimeout(30.0)
     return sock
 
+def command_thread(sock, TELLO_ADDRESS, message):
+    sock.sendto(f'{message}'.encode('utf-8'), TELLO_ADDRESS)
+
+def send_command(sock, TELLO_ADDRESS, message):
+    thread = threading.Thread(target=command_thread, args=(sock, TELLO_ADDRESS, message, ))
+    thread.daemon = True
+    thread.start()
+
+def takeoff(sock, TELLO_ADDRESS):
+    send_command(sock, TELLO_ADDRESS, 'command')
+    time.sleep(1)
+    send_command(sock, TELLO_ADDRESS, 'streamon')
+    time.sleep(1)
+    send_command(sock, TELLO_ADDRESS, 'takeoff')
+    time.sleep(5)
+    send_command(sock, TELLO_ADDRESS, 'up 50')
+    time.sleep(5)
+
 # Function to handle the main video capture and processing loop
 def video_capture_loop(sock, TELLO_ADDRESS, TELLO_CAMERA_ADDRESS):
     cap = cv2.VideoCapture(TELLO_CAMERA_ADDRESS)
@@ -94,16 +112,52 @@ def video_capture_loop(sock, TELLO_ADDRESS, TELLO_CAMERA_ADDRESS):
                                         label += f' ID:{track_id}'
                                     cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2)
 
+                                    # draw box height and width
+                                    box_height, box_width = int(x2 - x1), int(y2 - y1)
+                                    cv2.putText(frame, f'Height: {box_height}, Width: {box_width}', (x1, y2 + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2)
+
+                                    if (track_id == 1):
+                                        if (box_width < 150):
+                                            if (box_height < 80):
+                                                send_command(sock, TELLO_ADDRESS, 'forward 20')
+                                            else:
+                                                send_command(sock, TELLO_ADDRESS, 'forward 80')
+                                        elif (box_width > 200):
+                                            if (box_width > 350):
+                                                send_command(sock, TELLO_ADDRESS, 'backward 30')
+                                            else:
+                                                send_command(sock, TELLO_ADDRESS, 'backward 50')
+
+                                        if (x_center_gap > 40):
+
+                                            if (box_width > 250):
+                                                send_command(sock, TELLO_ADDRESS, 'ccw 5')
+                                            elif (box_width > 100):
+                                                send_command(sock, TELLO_ADDRESS, 'ccw 10')
+                                            else:
+                                                send_command(sock, TELLO_ADDRESS, 'ccw 20')
+                                        elif (x_center_gap < -40):
+                                            if (box_width > 250):
+                                                send_command(sock, TELLO_ADDRESS, 'cw 5')
+                                            elif (box_width > 100):
+                                                send_command(sock, TELLO_ADDRESS, 'cw 10')
+                                            else:
+                                                send_command(sock, TELLO_ADDRESS, 'cw 20')
+                                        
+                                        if (y_center_gap > 150):
+                                            send_command(sock, TELLO_ADDRESS, 'up 20')
+                                        elif (y_center_gap < -150):
+                                            send_command(sock, TELLO_ADDRESS, 'down 20')
+
             cv2.imshow('Tello Camera View', frame)
 
             frame_num += 1
 
             # Add a small delay to ensure the loop runs smoothly
             if cv2.waitKey(1) & 0xFF == ord('q'):
-                sock.sendto('land'.encode('utf-8'), TELLO_ADDRESS)
+                send_command(sock, TELLO_ADDRESS, 'land')
                 break
             else:
-                sock.sendto('takeoff'.encode('utf-8'), TELLO_ADDRESS)
                 cv2.waitKey(1)  # Add this line to ensure proper event processing
     except KeyboardInterrupt:
         sock.sendto('land'.encode('utf-8'), TELLO_ADDRESS)
@@ -131,12 +185,9 @@ def main():
     udp_thread.daemon = True
     udp_thread.start()
 
-    sock.sendto('command'.encode('utf-8'), TELLO_ADDRESS)
-    time.sleep(1)
-    sock.sendto('streamon'.encode('utf-8'), TELLO_ADDRESS)
-    time.sleep(1)
-    sock.sendto('takeoff'.encode('utf-8'), TELLO_ADDRESS)
-    time.sleep(0.5)
+    takeoff_thread = threading.Thread(target=takeoff, args=(sock, TELLO_ADDRESS, ))
+    takeoff_thread.daemon = True
+    takeoff_thread.start()
 
     # Run the video capture loop in the main thread
     video_capture_loop(sock, TELLO_ADDRESS, TELLO_CAMERA_ADDRESS)

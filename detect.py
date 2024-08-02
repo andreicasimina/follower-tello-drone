@@ -72,6 +72,10 @@ for result in results1:
             # put the class name and confidence on the image
             cv2.putText(cv2_image1, label, (x1, y1 - 15), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 2)
 
+            # draw box height and width
+            box_height, box_width = int(x2 - x1), int(y2 - y1)
+            cv2.putText(cv2_image1, f'Height: {box_height}, Width: {box_width}', (x1, y2 + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2)
+
 for result in results2:
     # get the classes names
     classes_names = result.names
@@ -120,6 +124,10 @@ for result in results2:
 
             # put the class name and confidence on the image
             cv2.putText(cv2_image2, label, (x1, y1 - 15), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 2)
+
+            # draw box height and width
+            box_height, box_width = int(x2 - x1), int(y2 - y1)
+            cv2.putText(cv2_image2, f'Height: {box_height}, Width: {box_width}', (x1, y2 + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2)
 
 # show the image
 cv2.imshow('cv2_image1', cv2_image1)
