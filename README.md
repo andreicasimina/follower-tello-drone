@@ -25,21 +25,29 @@ Set-NetFirewallHyperVVMSetting -Name "{40E0AC32-46A5-438A-A0B2-2B479E8F2E90}" -D
 
 ## Ubuntu Side
 
-1. Install Dependencies
+1. Install Python 3.10  
+```
+sudo add-apt-repository ppa:deadsnakes/ppa
+sudo apt install python3.10
+```
+
+2. Create .venv
+
+3. Install Dependencies
 ```
 pip install -r requirements.txt
 ```
 This will return errors.
 
-2. Install OpenCv
+4. Install OpenCv
 ```
 pip install opencv-python
 ```
 
-3. Install PyTorch
+5. Install PyTorch
 https://pytorch.org/get-started/locally/
 
-4. Install YOLOv8
+6. Install YOLOv8
 https://docs.ultralytics.com/quickstart/
 ```
 pip install ultralytics
