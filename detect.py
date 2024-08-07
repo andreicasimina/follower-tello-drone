@@ -17,8 +17,8 @@ frame_center_x1, frame_center_y1 = int(frame_width1 / 2), int(frame_height1 / 2)
 frame_height2, frame_width2 = cv2_image2.shape[:2]
 frame_center_x2, frame_center_y2 = int(frame_width2 / 2), int(frame_height2 / 2)
 
-cv2.circle(cv2_image1, (frame_center_x1, frame_center_y1), 5, (255, 0, 0), -1)
-cv2.circle(cv2_image2, (frame_center_x2, frame_center_y2), 5, (255, 0, 0), -1)
+# cv2.circle(cv2_image1, (frame_center_x1, frame_center_y1), 5, (255, 0, 0), -1)
+# cv2.circle(cv2_image2, (frame_center_x2, frame_center_y2), 5, (255, 0, 0), -1)
 
 results1 = model.track(cv2_image1)
 results2 = model.track(cv2_image2)
@@ -42,7 +42,7 @@ for result in results1:
             detect_center_x = int(((x2 - x1) / 2) + x1)
             detect_center_y = int(((y2 - y1) / 2) + y1)
 
-            cv2.circle(cv2_image1, (detect_center_x, detect_center_y), 5, (255, 0, 0), -1)
+            # cv2.circle(cv2_image1, (detect_center_x, detect_center_y), 5, (255, 0, 0), -1)
 
             # x_center_gapとy_center_gapの計算
             x_center_gap = frame_center_x1 - detect_center_x
@@ -95,13 +95,13 @@ for result in results2:
             detect_center_x = int(((x2 - x1) / 2) + x1)
             detect_center_y = int(((y2 - y1) / 2) + y1)
 
-            cv2.circle(cv2_image2, (detect_center_x, detect_center_y), 5, (255, 0, 0), -1)
+            # cv2.circle(cv2_image2, (detect_center_x, detect_center_y), 5, (255, 0, 0), -1)
 
             # x_center_gapとy_center_gapの計算
             x_center_gap = frame_center_x1 - detect_center_x
             y_center_gap = frame_center_y1 - detect_center_y
 
-            cv2.arrowedLine(cv2_image2, (detect_center_x, detect_center_y), (frame_center_x2, frame_center_y2), (0, 255, 0), 3)
+            # cv2.arrowedLine(cv2_image2, (detect_center_x, detect_center_y), (frame_center_x2, frame_center_y2), (0, 255, 0), 3)
 
             # get the class
             cls = int(box.cls[0]) if hasattr(box, 'cls') and box.cls is not None else -1
@@ -130,13 +130,13 @@ for result in results2:
             cv2.putText(cv2_image2, f'Height: {box_height}, Width: {box_width}', (x1, y2 + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2)
 
 # show the image
-cv2.imshow('cv2_image1', cv2_image1)
-cv2.imshow('cv2_image', cv2_image2)
+# cv2.imshow('cv2_image1', cv2_image1)
+# cv2.imshow('cv2_image', cv2_image2)
 
 # save the image
 cv2.imwrite('./result1.jpg', cv2_image1)
 cv2.imwrite('./result2.jpg', cv2_image2)
 
-cv2.waitKey(0)
+# cv2.waitKey(0)
 
-cv2.destroyAllWindows()
+# cv2.destroyAllWindows()
